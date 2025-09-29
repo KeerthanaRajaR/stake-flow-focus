@@ -48,10 +48,10 @@ export const OwnershipTable: React.FC<OwnershipTableProps> = ({
 
     // Process each pricing round
     pricingRounds.forEach((round) => {
-      // Calculate SAFE conversions for this round
       let safeShares = 0;
       const roundSafeInvestment = safeRounds.reduce((sum, safe) => sum + safe.amount, 0);
 
+      // Calculate SAFE conversions for this round
       safeRounds.forEach((safe) => {
         if (!safe.converted) return; // Only convert when pricing round happens
 
@@ -63,9 +63,12 @@ export const OwnershipTable: React.FC<OwnershipTableProps> = ({
         const convertedShares = safe.amount / sharePrice;
         safeShares += convertedShares;
 
-        // Add individual SAFE investor if not already added
+        // Add or update SAFE investor
         const existingSafe = stakeholders.find(s => s.stakeholder === safe.investorName);
-        if (!existingSafe) {
+        if (existingSafe) {
+          existingSafe.shares += convertedShares;
+          existingSafe.investment += safe.amount;
+        } else {
           stakeholders.push({
             stakeholder: safe.investorName,
             shares: convertedShares,
@@ -81,16 +84,22 @@ export const OwnershipTable: React.FC<OwnershipTableProps> = ({
       const pricePerShare = effectivePreMoney / totalShares;
       const newShares = round.investment / pricePerShare;
 
-      // Add pricing round investors
+      // Add or update pricing round investors
       round.newInvestors.forEach((investor) => {
         const investorShares = investor.investment / pricePerShare;
-        stakeholders.push({
-          stakeholder: investor.name,
-          shares: investorShares,
-          ownership: 0,
-          investment: investor.investment,
-          type: 'investor'
-        });
+        const existingInvestor = stakeholders.find(s => s.stakeholder === investor.name);
+        if (existingInvestor) {
+          existingInvestor.shares += investorShares;
+          existingInvestor.investment += investor.investment;
+        } else {
+          stakeholders.push({
+            stakeholder: investor.name,
+            shares: investorShares,
+            ownership: 0,
+            investment: investor.investment,
+            type: 'investor'
+          });
+        }
       });
 
       // Update totals
@@ -102,6 +111,15 @@ export const OwnershipTable: React.FC<OwnershipTableProps> = ({
     stakeholders.forEach(stakeholder => {
       stakeholder.ownership = (stakeholder.shares / totalShares) * 100;
     });
+
+    // Normalize ownership percentages to ensure they sum to 100
+    const totalOwnership = stakeholders.reduce((sum, s) => sum + s.ownership, 0);
+    if (Math.abs(totalOwnership - 100) > 0.01) {
+      const scalingFactor = 100 / totalOwnership;
+      stakeholders.forEach(stakeholder => {
+        stakeholder.ownership *= scalingFactor;
+      });
+    }
 
     // Group data for charts
     const chartData = stakeholders.reduce((acc, stakeholder) => {
