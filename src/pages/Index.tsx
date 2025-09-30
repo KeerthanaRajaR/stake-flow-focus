@@ -1,12 +1,15 @@
-import React, { useState, useCallback } from "react";
+import React, { useState, useEffect } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { PlusCircle, TrendingUp, Users, DollarSign } from "lucide-react";
+import { PlusCircle, TrendingUp, Users, DollarSign, LogOut } from "lucide-react";
 import { CompanySetup } from "@/components/CompanySetup";
 import { SafeRound } from "@/components/SafeRound";
 import { PricingRound } from "@/components/PricingRound";
 import { OwnershipTable } from "@/components/OwnershipTable";
+import { Auth } from "@/components/Auth";
+import { useCompanyData } from "@/hooks/useCompanyData";
+import { supabase } from "@/integrations/supabase/client";
+import { Button } from "@/components/ui/button";
 import { useToast } from "@/hooks/use-toast";
 
 export interface Company {
@@ -38,48 +41,60 @@ export interface PricingRoundData {
 
 const Index = () => {
   const { toast } = useToast();
-  const [company, setCompany] = useState<Company | null>(null);
-  const [safeRounds, setSafeRounds] = useState<SafeInvestment[]>([]);
-  const [pricingRounds, setPricingRounds] = useState<PricingRoundData[]>([]);
+  const [user, setUser] = useState<any>(null);
   const [activeTab, setActiveTab] = useState("setup");
 
-  const handleCompanySetup = useCallback((companyData: Company) => {
-    setCompany(companyData);
+  const {
+    company,
+    safeRounds,
+    pricingRounds,
+    loading,
+    saveCompany,
+    saveSafeRound,
+    savePricingRound,
+  } = useCompanyData(user?.id);
+
+  useEffect(() => {
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      setUser(session?.user ?? null);
+    });
+
+    const {
+      data: { subscription },
+    } = supabase.auth.onAuthStateChange((_event, session) => {
+      setUser(session?.user ?? null);
+    });
+
+    return () => subscription.unsubscribe();
+  }, []);
+
+  const handleSignOut = async () => {
+    await supabase.auth.signOut();
+    toast({
+      title: "Signed out",
+      description: "You have been successfully signed out.",
+    });
+  };
+
+  const handleCompanySetup = async (companyData: Company) => {
+    await saveCompany(companyData);
     setActiveTab("safe");
-    toast({
-      title: "Company Setup Complete",
-      description: `${companyData.name} configured with ${companyData.foundersShares.toLocaleString()} founder shares`,
-    });
-  }, [toast]);
+  };
 
-  const handleSafeRound = useCallback((safeData: Omit<SafeInvestment, 'id' | 'converted'>) => {
-    const newSafe: SafeInvestment = {
-      ...safeData,
-      id: Math.random().toString(36).substr(2, 9),
-      converted: false,
-    };
-    setSafeRounds(prev => [...prev, newSafe]);
-    toast({
-      title: "SAFE Round Added",
-      description: `${safeData.investorName} - $${safeData.amount.toLocaleString()}`,
-    });
-  }, [toast]);
+  if (!user) {
+    return <Auth />;
+  }
 
-  const handlePricingRound = useCallback((roundData: Omit<PricingRoundData, 'id'>) => {
-    const newRound: PricingRoundData = {
-      ...roundData,
-      id: Math.random().toString(36).substr(2, 9),
-    };
-    setPricingRounds(prev => [...prev, newRound]);
-
-    // Mark SAFE rounds as converted
-    setSafeRounds(prev => prev.map(safe => ({ ...safe, converted: true })));
-
-    toast({
-      title: "Pricing Round Added",
-      description: `${roundData.name} - $${roundData.investment.toLocaleString()} raised`,
-    });
-  }, [toast]);
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-background flex items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto"></div>
+          <p className="mt-4 text-muted-foreground">Loading...</p>
+        </div>
+      </div>
+    );
+  }
 
   if (!company) {
     return (
@@ -96,6 +111,12 @@ const Index = () => {
 
           <Card className="mx-auto max-w-2xl bg-card border border-primary/20 shadow-lg">
             <CardHeader className="text-center">
+              <div className="flex justify-end mb-2">
+                <Button variant="ghost" size="sm" onClick={handleSignOut}>
+                  <LogOut className="h-4 w-4 mr-2" />
+                  Sign Out
+                </Button>
+              </div>
               <CardTitle className="flex items-center justify-center gap-2 text-xl md:text-2xl">
                 <TrendingUp className="h-5 w-5 md:h-6 md:w-6 text-primary" />
                 Get Started
@@ -117,12 +138,18 @@ const Index = () => {
     <div className="min-h-screen bg-background p-4 md:p-6 lg:p-8">
       <div className="mx-auto max-w-7xl">
         {/* Header */}
-        <div className="mb-6 md:mb-8">
-          <h1 className="mb-2 text-2xl md:text-3xl font-bold text-foreground">{company.name}</h1>
-          <p className="text-sm md:text-base text-muted-foreground">
-            Initial Valuation: ${company.initialValuation.toLocaleString()} •
-            Founder Shares: {company.foundersShares.toLocaleString()}
-          </p>
+        <div className="mb-6 md:mb-8 flex justify-between items-start">
+          <div>
+            <h1 className="mb-2 text-2xl md:text-3xl font-bold text-foreground">{company.name}</h1>
+            <p className="text-sm md:text-base text-muted-foreground">
+              Initial Valuation: ${company.initialValuation.toLocaleString()} •
+              Founder Shares: {company.foundersShares.toLocaleString()}
+            </p>
+          </div>
+          <Button variant="ghost" size="sm" onClick={handleSignOut}>
+            <LogOut className="h-4 w-4 mr-2" />
+            Sign Out
+          </Button>
         </div>
 
         {/* Stats Cards */}
@@ -206,7 +233,7 @@ const Index = () => {
                 </div>
               </CardHeader>
               <CardContent>
-                <SafeRound onAddSafe={handleSafeRound} existingSafes={safeRounds} />
+                <SafeRound onAddSafe={saveSafeRound} existingSafes={safeRounds} />
               </CardContent>
             </Card>
           </TabsContent>
@@ -224,7 +251,7 @@ const Index = () => {
               </CardHeader>
               <CardContent>
                 <PricingRound
-                  onAddRound={handlePricingRound}
+                  onAddRound={savePricingRound}
                   company={company}
                   safeRounds={safeRounds}
                   existingRounds={pricingRounds}
