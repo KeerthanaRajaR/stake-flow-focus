@@ -14,7 +14,156 @@ export type Database = {
   }
   public: {
     Tables: {
-      [_ in never]: never
+      companies: {
+        Row: {
+          created_at: string
+          founders_shares: number
+          id: string
+          initial_valuation: number
+          name: string
+          total_shares: number
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          founders_shares: number
+          id?: string
+          initial_valuation: number
+          name: string
+          total_shares: number
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          founders_shares?: number
+          id?: string
+          initial_valuation?: number
+          name?: string
+          total_shares?: number
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      pricing_round_investors: {
+        Row: {
+          created_at: string
+          id: string
+          investment: number
+          name: string
+          pricing_round_id: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          investment: number
+          name: string
+          pricing_round_id: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          investment?: number
+          name?: string
+          pricing_round_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "pricing_round_investors_pricing_round_id_fkey"
+            columns: ["pricing_round_id"]
+            isOneToOne: false
+            referencedRelation: "pricing_rounds"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      pricing_rounds: {
+        Row: {
+          company_id: string
+          created_at: string
+          id: string
+          investment: number
+          name: string
+          pre_money_valuation: number
+          updated_at: string
+        }
+        Insert: {
+          company_id: string
+          created_at?: string
+          id?: string
+          investment: number
+          name: string
+          pre_money_valuation: number
+          updated_at?: string
+        }
+        Update: {
+          company_id?: string
+          created_at?: string
+          id?: string
+          investment?: number
+          name?: string
+          pre_money_valuation?: number
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "pricing_rounds_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      safe_investments: {
+        Row: {
+          amount: number
+          company_id: string
+          converted: boolean
+          created_at: string
+          discount: number
+          id: string
+          investor_name: string
+          updated_at: string
+          valuation_cap: number | null
+        }
+        Insert: {
+          amount: number
+          company_id: string
+          converted?: boolean
+          created_at?: string
+          discount: number
+          id?: string
+          investor_name: string
+          updated_at?: string
+          valuation_cap?: number | null
+        }
+        Update: {
+          amount?: number
+          company_id?: string
+          converted?: boolean
+          created_at?: string
+          discount?: number
+          id?: string
+          investor_name?: string
+          updated_at?: string
+          valuation_cap?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "safe_investments_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
     }
     Views: {
       [_ in never]: never
